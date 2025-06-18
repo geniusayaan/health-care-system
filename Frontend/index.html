@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Robot Health Advice</title>
+</head>
+<body>
+  <h1>Robot Health Advice</h1>
+
+  <label for="userData">Enter your symptoms:</label>
+  <input placeholder="Describe your issue" type="text" id="userData" name="userData" disabled required />
+
+  <button id="speak" type="button">Speak</button>
+  <button type="button" id="submit">Continue</button>
+  <button id="startBtn" type="button">Start Recording</button>
+  <button id="stopBtn" type="button" disabled>Stop Recording</button>
+
+  <div id="adviceSection">
+    <h2>Advice:</h2>
+    <p id="advice"></p>
+  </div>
+
+  <p id="transcibed"></p>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recorderjs/0.1.0/recorder.min.js"></script>
+
+  <script>
+    let recorder, audioStream;
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const transcriptEl = document.getElementById("transcibed");
+    const userDataInput = document.getElementById("userData");
+
+    const placeHolders = [
+      "Enter your illness",
+      "Describe what you're experiencing",
+      "Since when are you facing it?"
+    ];
+    let steps = 3;
+    let userData = "";
+
+
+let mediaRecorder;
+let audioChunks = [];
+
+startBtn.addEventListener("click", async () => {
+ audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+ console.log(audioChunks,audioStream)
+
+  mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm;codecs=opus' });
+  console.log(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'));
+
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+    uploadWav(blob);
+  };
+
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+});
+
+stopBtn.addEventListener("click", () => {
+  mediaRecorder.stop();
+  stopBtn.disabled = true;
+  startBtn.disabled = false;
+});
+
+    function uploadWav(blob) {
+      if (!blob || blob.size === 0) {
+        alert("Recording failed or is empty.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('audio', blob, 'recording.webm');
+
+
+      transcriptEl.textContent = 'Uploading for transcription...';
+
+      fetch('http://localhost:3000/api/health/transcribeAudio', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        transcriptEl.textContent = data.transcript || 'No transcription returned.';
+      })
+      .catch(err => {
+        console.error("Upload failed:", err);
+        transcriptEl.textContent = 'Upload failed: ' + err.message;
+      });
+    }
+
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log("Speech recognized:", transcript);
+        userData += " " + transcript;
+      };
+
+      recognition.onerror = (event) => console.error("Speech error:", event.error);
+
+      document.getElementById("speak").addEventListener("click", () => recognition.start());
+    }
+
+
+    document.getElementById('submit').addEventListener('click', async (e) => {
+      e.preventDefault();
+      document.getElementById("submit").innerHTML = "Next";
+      userDataInput.readOnly = false;
+
+      if (steps !== 0) {
+        userData += " " + userDataInput.value;
+        userDataInput.placeholder = placeHolders[placeHolders.length - steps];
+        userDataInput.value = "";
+        userDataInput.disabled = false;
+        steps--;
+        return;
+      }
+
+      document.getElementById("submit").innerHTML = "Start Treatment";
+      userDataInput.placeholder = "";
+      userDataInput.value = "";
+      userDataInput.disabled = true;
+
+      const adviceSection = document.getElementById('adviceSection');
+      const adviceText = document.getElementById('advice');
+
+      try {
+        const id = localStorage.getItem("id");
+        const response = await fetch('http://localhost:3000/api/health/getHealthData', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userData, id })
+        });
+
+        const data = await response.json();
+
+        if (data.id && !id) localStorage.setItem("id", data.id);
+
+        speak(data.advice);
+        adviceText.textContent = data.advice;
+        adviceSection.style.display = 'block';
+        document.getElementById("submit").disabled = true;
+      } catch (err) {
+        console.error('Error getting health advice:', err);
+        alert('Failed to get health advice. Please try again.');
+      }
+    });
+
+  
+    function speak(text) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    }
+
+  </script>
+</body>
+</html>
