@@ -21,6 +21,7 @@
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
     "nodemon": "^3.1.10",
+    "serverless-http": "^3.2.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
