@@ -19,6 +19,10 @@ app.use(express.json());
 
 app.use(express.static(path.join(__dirname, 'Frontend')));
 
+app.get("/", (req, res) => {
+  res.send("Welcome to Health AI API 🚑");
+});
+
 
 app.use("/api/health", healthRoute);
 
