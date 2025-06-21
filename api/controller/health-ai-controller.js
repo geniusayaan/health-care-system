@@ -83,7 +83,7 @@ export const getHealthData = async (request, response) => {
 
   } catch (error) {
     console.error("Error while fetching AI advice:", error);
-    return response.status(500).json({ error: "An error occurred while fetching the advice." });
+    return response.status(500).json({ error: error });
   }
 };
 
