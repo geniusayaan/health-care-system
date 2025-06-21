@@ -1,4 +1,3 @@
-// api/server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -17,4 +16,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/health", healthRoute);
 
-export default app; 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
