@@ -20,21 +20,18 @@ export const getHealthData = async (request, response) => {
   try {
 
 
-    const { id, userData } = request.body;
+    const {  userData } = request.body;
 
-    console.log(id)
+
+    
 
     if (!userData || typeof userData !== 'string') {
       return response.status(400).json({ error: "Invalid user data. Please provide valid input." });
     }
 
-    let user = null;
 
-    if (id) {
-      user = await User.findById(id);
-    }
 
-    const previousProblems = user ? user.problems.join(', ') : '';
+
 
     const systemMessage = `
       You are used as a doctor in an app. You have to give the user full information about their illness, what they should do, and even suggest medications.
@@ -42,13 +39,13 @@ export const getHealthData = async (request, response) => {
       And if the preovious problems are relted to the current problem then include that and think and give user a good and better response if not then leave that prevoius problem and he is having the same probelm which was his prevoius problem then do not include anything value in the Problem one. and do not include anything wihtout these things.
       Talk to them like a human and do not add anything unnecessary like "here is", etc. 
       and give everything if the prevoius problem are relted to the current problem and decribe it in response and give your full appreouch to think of it if there is anything else in the user input without the medicl or dieses thing then leave it and in the advice tell that i am only for health not for these kind of things and you dont have to add anything else in the response only the thing i gave you if there are soe other illogical thing then dont ask about it leave it there and only tell i am a health care profeesional and i am not created for this.
-      and if there are issues related to the helth then give full approuch and get the serches and think ctitically about it as you can get.
+      and if there are issues related to the helth then give full approuch and get the serches and think ctitically about it as you can get and also the main main thing which you should focus most i am using this application for them who dont know to speak english mean fr them who are weak lke indian so as much as you can use simpiler and easier words so they can understand and give yuor full aprroch also for finding the real issue casuing that search on internet and evrything what you can do .
       Give it in this format only:
       - Problem: [problem as string.give evry problem which user has so it can be stored]
       - Advice: [advice as string]
     `;
 
-    const userMessage = `Please give advice and suggestions based on this input: "${userData}". Previous problems: ${previousProblems}`;
+    const userMessage = `Please give advice and suggestions based on this input: "${userData}". `;
 
     const aiResponse = await groq.chat.completions.create({
       messages: [
@@ -69,21 +66,13 @@ export const getHealthData = async (request, response) => {
     const extractedProblem = match[1].trim();
     const extractedAdvice = match[2].trim();
 
-    if (!user) {
-      user = new User({ problems: [extractedProblem] });
-      await user.save();
-    } else {
-      if (!extractedProblem.length === 0 || !extractedProblem == "") {
-        user.problems.push(extractedProblem);
-        await user.save();
-      }
-    }
+   
 
-    return response.json({ advice: extractedAdvice, id: user._id });
+    return response.json({ advice: extractedAdvice });
 
   } catch (error) {
     console.error("Error while fetching AI advice:", error);
-    return response.status(500).json({ error: error });
+    return response.status(500).json({ error: error.message });
   }
 };
 
